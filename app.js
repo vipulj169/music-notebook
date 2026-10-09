@@ -54,7 +54,40 @@ let songFilter='';
 try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s&&Array.isArray(s.songs)&&s.songs.length)state=Object.assign(state,s);}catch(e){}
 if(!state.songs.length){const e=exampleSong();state.songs=[e];state.current=e.id;}
 if(!state.songs.find(s=>s.id===state.current))state.current=state.songs[0].id;
-function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
+
+// Track state before changes for undo
+let pendingSnapshot=JSON.parse(JSON.stringify(state));
+
+function pushUndo(){
+  if(pendingSnapshot){
+    undoStack.push(pendingSnapshot);
+    if(undoStack.length>maxHistory)undoStack.shift();
+    redoStack=[];
+  }
+}
+function save(){
+  pushUndo();
+  pendingSnapshot=JSON.parse(JSON.stringify(state));
+  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+}
+function undo(){
+  if(undoStack.length===0)return;
+  redoStack.push(JSON.parse(JSON.stringify(state)));
+  state=undoStack.pop();
+  pendingSnapshot=JSON.parse(JSON.stringify(state));
+  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+  render();
+  toast('Undone');
+}
+function redo(){
+  if(redoStack.length===0)return;
+  undoStack.push(JSON.parse(JSON.stringify(state)));
+  state=redoStack.pop();
+  pendingSnapshot=JSON.parse(JSON.stringify(state));
+  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+  render();
+  toast('Redone');
+}
 const song=()=>state.songs.find(s=>s.id===state.current);
 const playTonic=()=>mod(song().key.root+song().transpose);
 const playFlats=()=>useFlats(playTonic(),song().key.minor);
@@ -109,13 +142,18 @@ function render(){
     } else if(b.kind==='inst'){ body='<div class="bars">'+barsHTML(b.bars)+'</div>'; }
     else {
       body='<div class="lyrics">'+b.lines.map((l,li)=>'<div class="line">'+l.map((w,wi)=>
-        '<button class="w'+(w.t?'':' slot')+(sel&&sel.b===b.id&&sel.l===li&&sel.w===wi?' sel':'')+'" data-l="'+li+'" data-w="'+wi+'" aria-label="'+esc((w.t||'chord slot')+(w.c?', chord '+shown(w.c):', add chord'))+'"><span class="ch">'+chordHTML(w.c)+'</span><span class="tx">'+esc(w.t||'·')+'</span></button>').join('')+'</div>').join('')+'</div>';
+        '<button class="w'+(w.t?'':' slot')+(sel&&sel.b===b.id&&sel.l===li&&sel.w===wi?' sel':'')+'" data-l="'+li+'" data-w="'+wi+'" aria-label="'+esc((w.t||'chord slot')+(w.c?', chord '+shown(w.c):', add chord'))+'"><span class="ch">'+chordHTML(w.c)+'</span><span class="tx">'+esc(w.t||'·')+'</span></button>').join('')+
+        '<span class="line-actions"><button class="btn icon line-btn" data-act="copyLine" data-b="'+b.id+'" data-l="'+li+'" title="Copy chords" aria-label="Copy line chords">📋</button>'+
+        '<button class="btn icon line-btn" data-act="pasteLine" data-b="'+b.id+'" data-l="'+li+'" title="Paste chords" aria-label="Paste line chords"'+(clipboard.chords?'':' disabled')+'>📥</button></span>'+
+        '</div>').join('')+'</div>';
     }
     if(confirmDel===b.id) body+='<div class="addrow"><span>Delete this section?</span><button class="btn danger" data-act="delYes">Delete</button><button class="btn" data-act="delNo">Keep</button></div>';
     return '<section class="block" id="b-'+b.id+'" data-id="'+b.id+'" data-s="'+b.section+'">'+head+body+'</section>';
   }).join('');
 }
 let editing=null,confirmDel=null,sel=null,confirmSong=false;
+let clipboard={chords:null,wordCount:null,lineText:null};
+let undoStack=[],redoStack=[],maxHistory=50;
 
 // ---------- block events ----------
 $('blocks').addEventListener('click',e=>{
@@ -136,6 +174,22 @@ $('blocks').addEventListener('click',e=>{
   else if(a==='del'){confirmDel=b.id;}
   else if(a==='delNo'){confirmDel=null;}
   else if(a==='delYes'){s.blocks.splice(i,1);confirmDel=null;}
+  else if(a==='copyLine'){
+    const blockId=btn.dataset.b;const lineIdx=+btn.dataset.l;
+    const block=s.blocks.find(x=>x.id===blockId);
+    if(block&&block.kind==='lyr'&&block.lines[lineIdx]){
+      copyLineChordsByIndex(block,lineIdx);
+    }
+    return;
+  }
+  else if(a==='pasteLine'){
+    const blockId=btn.dataset.b;const lineIdx=+btn.dataset.l;
+    const block=s.blocks.find(x=>x.id===blockId);
+    if(block&&block.kind==='lyr'&&block.lines[lineIdx]){
+      pasteLineChordsByIndex(block,lineIdx);
+    }
+    return;
+  }
   else return;
   s.example=false;save();render();
 });
@@ -172,6 +226,66 @@ function openPop(b,li,wi,anchor){
     else if(t.dataset.p==='slot'){if(!commit(inp.value))return;b.lines[li].splice(wi+1,0,{t:'',c:''});save();closePop();}});
 }
 document.addEventListener('mousedown',e=>{if(pop&&!pop.contains(e.target)&&!e.target.closest('.w'))closePop();});
+
+// ---------- copy/paste chords ----------
+function mapChordsProportionally(sourceChords,sourceLen,targetLen){
+  if(sourceLen===targetLen)return[...sourceChords];
+  const result=new Array(targetLen).fill('');
+  const chordPositions=[];
+  sourceChords.forEach((chord,idx)=>{if(chord)chordPositions.push({idx,chord});});
+  if(chordPositions.length===0)return result;
+  chordPositions.forEach(({idx,chord})=>{
+    const targetIdx=Math.round((idx/sourceLen)*targetLen);
+    const clampedIdx=Math.min(targetIdx,targetLen-1);
+    result[clampedIdx]=chord;
+  });
+  return result;
+}
+function copyLineChordsByIndex(block,lineIdx){
+  const line=block.lines[lineIdx];
+  if(!line)return;
+  clipboard.chords=line.map(w=>w.c);
+  clipboard.wordCount=line.length;
+  clipboard.lineText=line.map(w=>w.t).filter(Boolean).slice(0,5).join(' ')+(line.length>5?'...':'');
+  const chordCount=clipboard.chords.filter(c=>c).length;
+  toast(`Copied ${chordCount} chord${chordCount!==1?'s':''} from "${clipboard.lineText}"`);
+  song().example=false;save();render();
+}
+function pasteLineChordsByIndex(block,lineIdx){
+  if(!clipboard.chords)return;
+  const targetLine=block.lines[lineIdx];
+  if(!targetLine)return;
+  const sourceLen=clipboard.wordCount;
+  const targetLen=targetLine.length;
+  const mapped=mapChordsProportionally(clipboard.chords,sourceLen,targetLen);
+  targetLine.forEach((word,idx)=>{if(idx<mapped.length)word.c=mapped[idx];});
+  song().example=false;save();render();
+  setTimeout(()=>{
+    const s=song();
+    targetLine.forEach((word,idx)=>{
+      if(mapped[idx]){
+        const el=document.querySelector(`.block[data-id="${block.id}"] .w[data-l="${lineIdx}"][data-w="${idx}"]`);
+        if(el){el.classList.add('pasted');setTimeout(()=>el.classList.remove('pasted'),400);}
+      }
+    });
+  },10);
+  const chordCount=mapped.filter(c=>c).length;
+  toast(`Pasted ${chordCount} chord${chordCount!==1?'s':''} to current line`);
+}
+function copyLineChords(){
+  if(!sel)return;
+  const s=song();
+  const block=s.blocks.find(b=>b.id===sel.b);
+  if(!block||block.kind!=='lyr')return;
+  copyLineChordsByIndex(block,sel.l);
+}
+function pasteLineChords(){
+  if(!sel||!clipboard.chords)return;
+  const s=song();
+  const block=s.blocks.find(b=>b.id===sel.b);
+  if(!block||block.kind!=='lyr')return;
+  pasteLineChordsByIndex(block,sel.l);
+}
 
 // ---------- toolbar ----------
 $('songSearch').addEventListener('input',e=>{songFilter=e.target.value;render();});
@@ -299,6 +413,38 @@ $('restoreBtn').onclick=()=>{
       }catch(err){toast('Invalid JSON. Check the format and try again.');}}});
 };
 function toast(msg){const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+
+// ---------- keyboard shortcuts ----------
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='c'&&!e.shiftKey&&!e.altKey){
+    const isInput=e.target.matches('input, textarea');
+    const hasSelection=isInput&&e.target.selectionStart!==e.target.selectionEnd;
+    if(sel&&!hasSelection){
+      e.preventDefault();copyLineChords();
+    }
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='v'&&!e.shiftKey&&!e.altKey){
+    const isInput=e.target.matches('input, textarea');
+    const hasSelection=isInput&&e.target.selectionStart!==e.target.selectionEnd;
+    if(sel&&clipboard.chords&&!hasSelection){
+      e.preventDefault();pasteLineChords();
+    }
+  }
+  // Undo with Cmd+Z
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){
+    const isInput=e.target.matches('input, textarea');
+    if(!isInput){
+      e.preventDefault();undo();
+    }
+  }
+  // Redo with Cmd+Shift+Z
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&e.shiftKey){
+    const isInput=e.target.matches('input, textarea');
+    if(!isInput){
+      e.preventDefault();redo();
+    }
+  }
+});
 
 render();
 })();

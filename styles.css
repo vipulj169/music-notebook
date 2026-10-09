@@ -72,7 +72,11 @@ textarea{width:100%;font-family:var(--f-body);line-height:1.5}
 .bhead .time{width:6.5ch;font-variant-numeric:tabular-nums}
 .bactions{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .lyrics{display:flex;flex-direction:column;gap:6px;min-width:0}
-.line{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:.35em;row-gap:4px;min-height:2.6em}
+.line{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:.35em;row-gap:4px;min-height:2.6em;position:relative}
+.line:hover .line-actions{opacity:1}
+.line-actions{display:inline-flex;gap:2px;margin-left:6px;opacity:0;transition:opacity 0.2s}
+.line-btn{font-size:14px;padding:2px 6px;min-width:28px}
+@media (max-width:520px){.line-actions{opacity:1}}
 .w{display:inline-flex;flex-direction:column;align-items:flex-start;border:none;background:none;padding:0 1px;border-radius:4px;text-align:left}
 .w:hover{background:var(--chord-bg)}
 .w .ch{font-family:var(--f-chord);font-weight:700;font-size:14px;color:var(--chord);min-height:1.35em;line-height:1.35;white-space:nowrap}
@@ -114,4 +118,9 @@ textarea{width:100%;font-family:var(--f-body);line-height:1.5}
   .w{padding:2px 4px}
   .w .tx{font-size:18px}
 }
-@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@keyframes chordPaste{
+  0%{background:var(--chord-bg);transform:scale(1.05)}
+  100%{background:transparent;transform:scale(1)}
+}
+.w.pasted{animation:chordPaste 0.4s ease-out}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}.w.pasted{animation:none}}
