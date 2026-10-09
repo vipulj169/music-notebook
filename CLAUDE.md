@@ -102,6 +102,79 @@ Palette includes diatonic chords (solid border in UI) plus common borrowed chord
 - Major keys: ♭VI, ♭VII, vm, IV (borrowed from parallel minor)
 - Minor keys: V, ♭II, I, VII° (from harmonic/melodic minor and major)
 
+## Copy/Paste & Undo/Redo
+
+### Copy/Paste Chords
+
+**User Interface:**
+- Each lyric line has 📋 (copy) and 📥 (paste) buttons that appear on hover (desktop) or always visible (mobile)
+- Keyboard shortcuts: Cmd+C to copy, Cmd+V to paste (when a word is selected)
+- Shortcuts don't interfere with normal text input in form fields
+
+**Implementation:**
+```javascript
+copyLineChordsByIndex(block, lineIndex)
+  - Extracts all chords from line: line.map(w => w.c)
+  - Stores in clipboard: {chords, wordCount, lineText}
+  - Shows toast with chord count
+
+pasteLineChordsByIndex(block, lineIndex)
+  - Uses mapChordsProportionally() for smart mapping
+  - Applies chords to target line
+  - Triggers paste animation on modified words
+  - Shows toast with result
+
+mapChordsProportionally(sourceChords, sourceLen, targetLen)
+  - Exact match: Direct copy
+  - Different lengths: Proportional distribution
+  - Example: [F, '', Dm, C] (4 words) → [F, '', '', '', Dm, '', C, ''] (8 words)
+  - Maps each chord position: sourceIdx/sourceLen * targetLen
+```
+
+**Edge Cases:**
+- Only works on lyric blocks (not instrumental)
+- Paste button disabled when clipboard empty
+- Animation (.pasted class) uses reduced-motion media query
+- Keyboard shortcuts check for text selection in inputs
+
+### Undo/Redo
+
+**Delayed Snapshot Pattern:**
+The undo system uses a "delayed snapshot" approach to capture state BEFORE modifications:
+
+```javascript
+// Initialization
+pendingSnapshot = JSON.parse(JSON.stringify(state))
+
+// When save() is called
+save() {
+  pushUndo()              // Push pending snapshot to undo stack
+  pendingSnapshot = state // Create new snapshot of current state
+  localStorage.setItem()  // Persist to storage
+}
+
+// Undo flow
+undo() {
+  redoStack.push(state)        // Save current for redo
+  state = undoStack.pop()      // Restore previous
+  pendingSnapshot = state      // Update snapshot
+  render()
+}
+```
+
+**Why Delayed Snapshot:**
+- Problem: Code modifies state, then calls save() - too late to snapshot "before"
+- Solution: Each save() pushes the PREVIOUS snapshot, then creates new one
+- First change: pushes initial state → can undo to initial
+- Second change: pushes state after first change → can undo second change
+
+**Keyboard Shortcuts:**
+- Cmd+Z (Ctrl+Z on Windows/Linux): Undo last change
+- Cmd+Shift+Z (Ctrl+Shift+Z): Redo
+- Max 50 history items (configurable via maxHistory)
+- Works across all state changes: chords, structure, transposition, etc.
+- Shortcuts disabled when typing in input/textarea fields
+
 ## Rendering Architecture
 
 ### Pattern
@@ -117,6 +190,18 @@ confirmDel: null | blockId // Block awaiting delete confirmation
 sel: null | {b, l, w}     // Selected word for chord palette
 confirmSong: boolean       // Song delete confirmation state
 pop: null | HTMLElement   // Chord popover element
+
+// Clipboard for copy/paste
+clipboard: {
+  chords: null | string[], // Array of chord strings
+  wordCount: null | number,// Original word count for mapping
+  lineText: null | string  // Preview text for toast
+}
+
+// Undo/redo state
+undoStack: [],             // History of previous states (max 50)
+redoStack: [],             // Forward history after undo
+pendingSnapshot: object    // State before current changes
 ```
 
 ### Render Flow
@@ -125,6 +210,7 @@ pop: null | HTMLElement   // Chord popover element
 - Outline strip: quick navigation chips for all sections
 - Blocks: each section renders header + content
   - Lyric blocks: words as buttons with chords floating above
+    - Line action buttons (📋 copy, 📥 paste) appear on hover or always on mobile
   - Instrumental blocks: chord symbols separated by bars
   - Edit mode: textarea or input field
 
@@ -172,6 +258,13 @@ Key variables:
 - Sticky toolbar for key controls
 - Mobile-first responsive design
 - Safe area insets for iOS notch/home indicator
+
+### Animations
+- **Paste animation**: `.pasted` class triggers scale + background animation on words
+  - 0.4s ease-out animation with @keyframes chordPaste
+  - Respects `prefers-reduced-motion` media query
+- **Line actions hover**: `.line-actions` opacity transition (0 → 1 on hover)
+  - Always visible on mobile (max-width: 520px)
 
 ## Helper Utilities
 

@@ -18,6 +18,8 @@ Perfect for iPad/phone at the piano, with automatic light/dark mode.
 ## Features
 
 - **Chord annotation**: Click any word to add a chord above it using a smart palette based on your song's key
+- **Copy/paste chords**: Copy chord progressions from one line and paste to another with smart proportional mapping
+- **Undo/redo**: Full history tracking with Cmd+Z/Cmd+Shift+Z (up to 50 actions)
 - **Roman numeral analysis**: See chords as I, IV, V to understand relationships and patterns across keys
 - **Song structure**: Label sections as mukhda (chorus), antara (verse), prelude, interlude, outro
 - **Transposition**: Practice the same song in different keys instantly
@@ -46,6 +48,21 @@ Perfect for iPad/phone at the piano, with automatic light/dark mode.
 ### For Instrumentals
 
 Click "Add instrumental section" and enter chords like: `F | Dm | Bb | C`
+
+### Copy/Paste Chord Patterns
+
+Speed up your workflow by copying chord progressions between lines:
+- **Copy**: Click the 📋 button on any line (or use Cmd+C when a word is selected)
+- **Paste**: Click the 📥 button on the target line (or use Cmd+V)
+- **Smart mapping**: When pasting to lines with different word counts, chords distribute proportionally
+- **Example**: Copy `[F, '', Dm, C]` from a 4-word line → paste to an 8-word line → becomes `[F, '', '', '', Dm, '', C, '']`
+
+### Undo/Redo Changes
+
+Made a mistake? No problem:
+- **Undo**: Cmd+Z (or Ctrl+Z on Windows/Linux) - goes back up to 50 actions
+- **Redo**: Cmd+Shift+Z (or Ctrl+Shift+Z) - restore what you undid
+- Works across all changes: chord edits, section labels, transposition, etc.
 
 ### Understanding Roman Numerals
 
