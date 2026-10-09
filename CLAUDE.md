@@ -40,7 +40,7 @@ state = {
 }
 ```
 
-Stored in `localStorage` under key `chordNotebook.v1`.
+Stored in `localStorage` under key `musicNotebook.v1`.
 
 ### Song Object
 ```javascript

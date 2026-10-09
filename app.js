@@ -5,7 +5,7 @@ const NI={C:0,'B#':0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,Fb:4,F:5,'E#':5,'F#':6,Gb:6
 const ROMAN=['I','♭II','II','♭III','III','IV','♯IV','V','♭VI','VI','♭VII','VII'];
 const SECTIONS=[['prelude','Prelude'],['mukhda','Mukhda'],['antara','Antara'],['interlude','Interlude'],['outro','Outro'],['other','Other']];
 const SECNAME=Object.fromEntries(SECTIONS);
-const STORE='chordNotebook.v1';
+const STORE='musicNotebook.v1';
 const uid=()=>Math.random().toString(36).slice(2,10);
 
 // ---------- music helpers ----------
