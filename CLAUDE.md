@@ -1,14 +1,29 @@
 # Architecture Documentation
 
+## Purpose
+
+Music-notebook is a **learning tool for piano beginners** to practice ear training, understand chord progressions, and master songs through hands-on annotation. It supports learning both existing songs (especially Bollywood) and working on your own compositions.
+
+The tool is designed to support the complete practice workflow:
+1. Listen to a song
+2. Figure out chords (by ear or with help)
+3. Annotate structure and patterns
+4. Understand relationships via Roman numerals
+5. Practice in different keys via transposition
+6. Build a searchable repertoire over time
+
+Key insight: This is not just a chord chart viewer—it's an active learning tool that grows with the user from copying chords to understanding theory.
+
 ## Overview
 
-Music-notebook is a single-file web app for learning songs on piano by ear. It helps organize lyrics with chord annotations, supports transposition, and displays chords as names or Roman numerals.
+Built as separate HTML/CSS/JS files (previously single-file), this web app helps organize lyrics with chord annotations, supports transposition, and displays chords as names or Roman numerals. Optimized for use on iPad/phone at the piano.
 
 ## Ground Rules
 
 **Critical constraints for all changes:**
-- Must remain a single static `index.html` with no build step and no framework
+- Static files only (HTML + CSS + JS), no build step and no framework
 - Must run on GitHub Pages as-is
+- Files: `index.html`, `styles.css`, `app.js` (simple, direct linking)
 - Keep the UI simple; prioritize ease of use over features
 - Must work well on phone/iPad at the piano
 - Must support both light and dark mode
@@ -180,3 +195,21 @@ Common extension patterns:
 - New chord display modes: Add to `chordHTML()` and view buttons
 - New import/export: Add modal + converter functions
 - New section types: Add to `SECTIONS` array
+
+## Future Directions (Learning-Focused)
+
+Ideas that align with the learning tool purpose:
+- **Practice mode**: Hide chords to test yourself, reveal on click
+- **Chord construction**: Show notes within chords (C = C-E-G) for beginners
+- **Pattern highlighting**: Detect common progressions (I-V-vi-IV, ii-V-I)
+- **Piano fingerings**: Visual reference for chord shapes
+- **Audio integration**: Link to YouTube/Spotify timestamps
+- **Progress tracking**: Mark songs as "learning", "practicing", "mastered"
+- **Theory notes**: Add text annotations about why a progression works
+- **Simplified view**: Beginner mode that shows only basic triads
+
+When evaluating new features, ask:
+- Does it help beginners learn music theory?
+- Does it support the ear training workflow?
+- Does it aid in understanding patterns across songs?
+- Does it remain simple enough for use at the piano?
