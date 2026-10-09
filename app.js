@@ -391,7 +391,7 @@ $('backupBtn').onclick=()=>{
       const blob=new Blob([json],{type:'application/json'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
-      a.href=url;a.download='chord-notebook-backup-'+new Date().toISOString().slice(0,10)+'.json';
+      a.href=url;a.download='music-notebook-backup-'+new Date().toISOString().slice(0,10)+'.json';
       a.click();URL.revokeObjectURL(url);toast('Downloaded backup file');}});
 };
 $('restoreBtn').onclick=()=>{
