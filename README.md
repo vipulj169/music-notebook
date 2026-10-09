@@ -113,3 +113,9 @@ This tool grows with you:
 ## Contributing
 
 This is a personal learning tool kept intentionally minimal. The architecture is documented in `CLAUDE.md`.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2026 Vipul Jain
