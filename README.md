@@ -1,4 +1,4 @@
-# Chord Notebook
+# Music Notebook
 
 A learning tool for piano beginners to practice ear training, understand chord progressions, and master songs through hands-on annotation. Whether you're learning existing songs you love or working on your own compositions, this notebook helps you analyze structure, identify patterns, and build your musical understanding.
 
